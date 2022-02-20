@@ -4,7 +4,6 @@ Game developed by me using Cerberus X
 
 <img src="https://user-images.githubusercontent.com/99989085/154798163-5f075f98-6b22-4a65-842c-fb96a2bcc096.png" />
 </br>
-</br>
 
 ## Introduction
 A human has been captured by an evil alien just to play with him before eating him. Survive everything you need to escape this horrible nightmare.
