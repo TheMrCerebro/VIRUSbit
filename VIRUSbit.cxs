@@ -1,0 +1,497 @@
+'*********************************************************************
+'
+' Copyright (c) 2021-2022 TheMrCerebro
+'
+' VIRUSbit - Zlib license.
+'
+' This software is provided 'as-is', without any express or
+' implied warranty. In no event will the authors be held
+' liable for any damages arising from the use of this software.
+'
+' Permission is granted to anyone to use this software for any purpose,
+' including commercial applications, and to alter it and redistribute
+' it freely, subject to the following restrictions:
+'
+' 1. The origin of this software must not be misrepresented;
+' you must not claim that you wrote the original software.
+' If you use this software in a product, an acknowledgment
+' in the product documentation would be appreciated but
+' is not required.
+'
+' 2. Altered source versions must be plainly marked as such,
+' and must not be misrepresented as being the original software.
+'
+' 3. This notice may not be removed or altered from any
+' source distribution.
+'
+'*********************************************************************
+
+#GLFW_WINDOW_TITLE="VIRUSbit - by TheMrCerebro"
+#GLFW_WINDOW_WIDTH=512
+#GLFW_WINDOW_HEIGHT=512
+#MOJO_IMAGE_FILTERING_ENABLED=False
+
+Import mojo
+
+Import inc.hscore
+Import inc.coldet
+Import inc.particles
+Import inc.shapes
+Import inc.waves
+Import inc.fonts
+
+Function Main()
+	New Game()
+End
+
+Class VIRUS
+	Field x:float,y:float,r,t:int
+	Method New(x:float,y:float,t:int)
+		Self.x=x
+		Self.y=y
+		Self.r=Rnd(360)
+		Self.t=t
+	end
+End
+
+Class LASER
+	Field x:float,y:float,r:float
+end
+
+Class SNAKE
+	Field x:float,y:float,d:int
+End
+
+Class Game Extends App
+
+	Method OnCreate()
+
+		SetUpdateRate(30)
+		Seed = Millisecs()
+
+		LoadFont("terminal.fnt")
+		
+		'Carga las imagenes
+		imgTitle = LoadImage("title.png")
+		imgPlayer = LoadImage("ship.png",4,Image.MidHandle)
+		imgVirus[2] = LoadImage("virus2.png",4,Image.MidHandle)
+		imgVirus[1] = LoadImage("virus1.png",4,Image.MidHandle)
+		imgVirus[0] = LoadImage("virus0.png",4,Image.MidHandle)
+		imgShield = LoadImage("shield.png",1,Image.MidHandle)
+		
+		'Carga los sonidos
+		sndLaser = LoadSound("laser.wav")
+		sndAccel = LoadSound("accel.wav")
+		sndWin = LoadSound("win.wav")
+		sndExplosion = LoadSound("explosion.wav")
+		sndDie = LoadSound("die.wav")
+		sndSelect = LoadSound("select.wav")
+	
+		'Crea una lista de puntuaciones ficticia
+		AddScore(620,"TMC")
+		AddScore(450,"JDP")
+		AddScore(210,"MGS")
+		AddScore(200,"HDF")
+		AddScore(180,"SMB")
+
+		'Activa la musica
+		PlayMusic("theme.ogg")
+		
+		'Crea las estrellas
+		For Local i:int=0 until 8
+			Local snk:SNAKE=New SNAKE
+			snk.x=Int(Rnd(1,16))*4
+			snk.y=Int(Rnd(1,16))*4
+			snk.d=Int(Rnd(0,4))*90
+			snkA.AddLast(snk)
+		Next
+		
+	end
+		
+	Method OnUpdate()
+		
+		If fader=0
+
+			Select state
+				
+			Case STATE_MENU
+
+				If KeyHit(KEY_X)
+					PlaySound(sndSelect)
+					score=0
+					wave=1
+					lifes=3
+					fader=1
+					px=32
+					py=32
+					vx=0
+					vy=0
+					angle=0
+					bulletsUsed=0
+					bulletCooldown = 200
+					lastBulletTime=0
+					
+					For Local i:int=0 To wave
+						Local x:float=32+Sin((360/(wave+1))*i)*(12+wave)
+						Local y:float=32+Cos((360/(wave+1))*i)*(12+wave)
+						vrsA.AddLast(New VIRUS(x,y,0))
+					Next
+					
+					StopMusic()
+					PlayMusic("ingame.ogg")
+					state=STATE_INGAME
+				Endif
+
+			Case STATE_INGAME
+				
+			'Controles
+			':float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float
+
+				If KeyDown(KEY_LEFT) Then angle += 1 * rotFactor
+				If KeyDown(KEY_RIGHT) Then angle += -1 * rotFactor
+	
+				'Aumenta la velocidad del vector
+				If KeyDown(KEY_UP)
+					PlaySound(sndAccel,1)
+					If anim<3 Then anim+=0.5 Else anim=1
+					vx += Sin(angle) * accFactor
+					vy += Cos(angle) * accFactor
+					If anim<2 Then AddWave(px-Sin(angle)*2,py-Cos(angle)*2,255,255,255,3)
+				Else
+					anim=0
+				Endif
+					
+				'Limites
+				If px<0 Then px = 64
+				If px>64 Then px = 0
+				If py<0 Then py = 64
+				If py>64 Then py = 0
+					
+				px += vx
+				py += vy
+
+				vx -= vx * dragFactor
+				vy -= vy * dragFactor
+					
+				If vx>1 Then vx = 1
+				If vy>1 Then vy = 1
+
+				If KeyHit(KEY_X)
+					If Millisecs()-lastBulletTime >= bulletCooldown
+						if bulletsUsed < maxBullets
+							Local las:=New LASER
+							las.x=px
+							las.y=py
+							las.r=angle
+							lasA.AddLast(las)
+							lastBulletTime = Millisecs()
+							bulletsUsed += 1
+							PlaySound(sndLaser,2)
+						Endif
+					Endif
+				Endif
+					
+				If inmortal>0
+					inmortal -= 1
+				Else
+					inmortal=0
+					For Local vrs:=Eachin vrsA
+					
+						If circleCircle(px,py,5,vrs.x,vrs.y,12-4*vrs.t)
+							fader=1
+							PlaySound(sndDie,3)
+							If lifes>0
+								px			   = 32
+								py			   = 32
+								vx			   = 0
+								vy			   = 0
+								angle		   = 0.0
+								bulletsUsed	   = 0
+								lastBulletTime = 0
+								inmortal	   = 90
+								shake		   = 30
+								lifes -= 1
+								AddWave(32,32,255,255,255,8)
+								AddEmitter(px,py,0.0,0.0,255,255,255,16,0.01)
+							Else
+								shake=0
+								StopMusic()
+								CheckScore()
+								StopMusic()
+								PlayMusic("over.ogg")
+								state=STATE_OVER
+							endif
+						Endif
+						
+					next
+				Endif
+
+			'Actualiza el arma laser del jugador
+			':float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float
+			
+				For Local las:=Eachin lasA
+					
+					las.x += Sin(las.r)*2.0
+					las.y += Cos(las.r)*2.0
+						
+					For Local vrs:=Eachin vrsA
+
+						If circleCircle(las.x,las.y,1,vrs.x,vrs.y,12-4*vrs.t)
+							
+							Select vrs.t
+							Case 0
+								shake = 10
+								score +=1
+							Case 1
+								shake = 5
+								score += 5
+							Case 2
+								shake = 2
+								score += 10
+							End
+							
+							PlaySound(sndExplosion,4)
+								
+							AddWave(vrs.x,vrs.y,255,255,0,12-4*vrs.t)
+	
+							If vrs.t<2
+								vrsA.AddLast(New VIRUS(vrs.x,vrs.y,vrs.t+1))
+								vrsA.AddLast(New VIRUS(vrs.x,vrs.y,vrs.t+1))
+							Endif
+								
+							bulletsUsed = Max(bulletsUsed-1,0)
+								
+							vrsA.RemoveEach(vrs)
+							lasA.RemoveEach(las)
+								
+							Exit
+								
+						endif
+					Next
+						
+					If las.x<0 Or las.x>64 Or las.y<0 Or las.y>64
+						bulletsUsed = Max(bulletsUsed-1,0)
+						lasA.RemoveEach(las)
+					endif
+	
+				Next
+				
+			'Actualiza los virus
+			':float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float
+			
+				For Local vrs:=Eachin vrsA
+					
+					Local v:float=Float(2+2*vrs.t)*0.1
+					vrs.x += Sin(vrs.r)*v
+					vrs.y += Cos(vrs.r)*v
+						
+					Local r:float=6-2*vrs.t
+					If vrs.x<-r Then vrs.x=64+r
+					If vrs.x>64+r Then vrs.x=-r
+					If vrs.y<-r Then vrs.y=64+r
+					If vrs.y>64+r Then vrs.y=-r
+						
+				Next
+				
+				'Si no hay enemigos en pantalla cambia a un nuevo nivel
+				If vrsA.IsEmpty()
+				
+					fader		   = 1
+					px			   = 32
+					py			   = 32
+					vx			   = 0
+					vy			   = 0
+					angle		   = 0
+					bulletsUsed	   = 0
+					lastBulletTime = 0
+					
+					wave += 1
+			
+					For Local i:int=0 To wave
+						Local x:float=32+Sin((360/(wave+1))*i)*(12+wave)
+						Local y:float=32+Cos((360/(wave+1))*i)*(12+wave)
+						vrsA.AddLast(New VIRUS(x,y,0))
+					Next
+					
+					PlaySound(sndWin,1)
+					lasA.Clear()
+					
+				Endif
+			
+			Case STATE_OVER
+				
+				'Si hay una nueva puntuacion...
+				If ranking
+					EnterPlayer(sndSelect)
+				Else
+					If KeyHit(KEY_X)
+						txt=""
+						fader=1
+						vrsA.Clear()
+						lasA.Clear()
+						PlaySound(sndSelect)
+						StopMusic()
+						PlayMusic("theme.ogg")
+						state=STATE_MENU
+					Endif
+				Endif
+				
+			End
+
+		endif
+		
+	'Actualiza las serpientes
+	':float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float
+		
+		For Local snk:=Eachin snkA
+		
+			snk.x += Cos(snk.d)
+			snk.y += Sin(snk.d)
+			
+			AddEmitter(snk.x,snk.y,0.0,0.0,192,0,192,1,0.05)	
+											
+			If Int(Rnd(0,10))=5 Then snk.d=Int(Rnd(0,4))*90
+
+			If snk.x<0 Or snk.x>64 Or snk.y<0 Or snk.y>64
+				snk.x = Int(Rnd(1,16))*4
+				snk.y = Int(Rnd(1,16))*4
+				snk.d = Int(Rnd(0,4))*90
+			endif
+
+		Next
+				
+	'Actualiza las particulas
+	':float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float
+	
+		UpdateParticles()
+
+	'Actualiza las ondas
+	':float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float:float
+	
+		UpdateWaves()
+		
+		If fader>0.05 Then fader -= 0.05 Else fader=0
+
+	End
+
+    Method OnRender()
+		
+	    Cls(0,0,0)
+	    Scale(8,8)
+		
+		'Actualiza el temblor de la pantalla
+		If shake>0
+			Translate(Rnd(-1,1),Rnd(-1,1))
+			shake -= 1
+		Endif
+
+		'Dibuja las particulas
+		DrawParticles()
+		
+		'Dibuja las ondas
+		DrawWaves()
+					
+		Select state
+			
+		Case STATE_MENU
+				
+			DrawImage(imgTitle,0,4)
+			Text("[TheMrCerebro]",32,58,0.5,0.5)
+			
+			SetAlpha(0.5+Cos(0.5 * Millisecs() Mod 360)*0.5)
+			
+			Local str:string
+			Local tmp:int = 0.1 * Millisecs() Mod 240
+			If tmp>0 And tmp<60
+				For Local i:int=0 To 3
+					For Local j:int=0 To Rnd(0,16)
+						str += String.FromChar(Rnd(97,122))
+						Text(str,32,26+(i*7),0.5,0.5)
+					Next
+					str=""
+				next
+			else
+				Text("Press",32,26,0.5,0.5)
+				Text("-X-",32,26+7,0.5,0.5)
+				Text("to SAVE the",32,26+7+7,0.5,0.5)
+				Text("system",32,26+7+7+7,0.5,0.5)
+			Endif
+			
+				
+		Case STATE_INGAME
+			
+			For Local vrs:=Eachin vrsA
+				DrawImage(imgVirus[vrs.t],vrs.x,vrs.y,0.01*Millisecs() Mod 4)
+			Next
+
+			For Local las:=Eachin lasA
+				Rect(las.x-0.5,las.y-0.5,1,1)
+			Next
+			
+			DrawImage(imgPlayer,px,py,angle,1.0,1.0,anim)
+			
+			If inmortal>0
+				SetAlpha( (0.1*Millisecs() Mod 10)*0.1 )
+				DrawImage(imgShield,px,py)
+			endif
+			
+			SetAlpha(0.5)
+			Text("S:"+score,0,2,0.0,0.5)
+			Text("H:"+hiscore,63,2,1.0,0.5)
+			Text("W:"+wave,0,56,0.0)
+			Text("L:"+lifes,63,56,1.0)
+
+		Case STATE_OVER
+
+			DrawScores(0,255,0,0,255,255)
+					
+		End
+		
+		'Dibuja el oscurecimiento d epantalla
+		If fader>0
+			SetColor(255,255,255)
+			SetAlpha(fader)
+			Rect(0,0,64,64)
+			For Local i:int=0 To 16
+				Local s:float = Rnd(2,8)
+				Rect(Rnd(0,64),Rnd(0,64),s,s)
+			Next
+		Endif
+
+	End
+
+Private
+
+	Const accFactor:float=0.1
+	Const rotFactor:float=5.0 
+	Const dragFactor:float=0.02
+	Const maxBullets:int=3
+	
+	'listas
+	Field lasA:=New List<LASER>
+	Field snkA:=New List<SNAKE>
+	Field vrsA:=New List<VIRUS>
+	
+	'imagenes
+	Field imgTitle:Image
+	Field imgPlayer:Image
+	Field imgVirus:Image[4]
+	Field imgShield:Image
+	
+	'sonidos
+	Field sndLaser:Sound
+	Field sndAccel:Sound
+	Field sndExplosion:Sound
+	Field sndWin:Sound
+	Field sndDie:Sound
+	Field sndSelect:Sound
+	
+	'variables
+	Enumerate STATE_MENU,STATE_INGAME,STATE_OVER
+	Field state:int=STATE_MENU
+	Field fader:float,shake:int
+	Field px:float,py:float,vx:float,vy:float,angle:float,anim:float,inmortal:float
+	Field bulletCooldown:int,lastBulletTime:int,bulletsUsed:int
+	Field wave:int,lifes:int
+	
+End

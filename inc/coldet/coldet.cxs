@@ -1,0 +1,346 @@
+'*********************************************************************
+'
+' Copyright (c) 2021-2022 TheMrCerebro
+'
+' coldet - Zlib license.
+'
+' This software is provided 'as-is', without any express or
+' implied warranty. In no event will the authors be held
+' liable for any damages arising from the use of this software.
+'
+' Permission is granted to anyone to use this software for any purpose,
+' including commercial applications, and to alter it and redistribute
+' it freely, subject to the following restrictions:
+'
+' 1. The origin of this software must not be misrepresented;
+' you must not claim that you wrote the original software.
+' If you use this software in a product, an acknowledgment
+' in the product documentation would be appreciated but
+' is not required.
+'
+' 2. Altered source versions must be plainly marked as such,
+' and must not be misrepresented as being the original software.
+'
+' 3. This notice may not be removed or altered from any
+' source distribution.
+'
+'*********************************************************************
+
+'Created by http://benmoren.com
+'Some functions and code modified version from http://www.jeffreythompson.org/collision-detection
+'GNU LGPL 2.1 License
+'Version 0.1 | January 10th, 2016
+
+'Version for Cerberus-X by TheMrCerebro
+
+Function rectRect:Bool(x:Float, y:Float, w:Float, h:Float, x2:Float, y2:Float, w2:Float, h2:float)
+
+	If (x + w >= x2 And x <= x2 + w2 And y + h >= y2 And  y <= y2 + h2) Return True
+	Return False
+
+End
+
+Function rectCircle:Bool(rx:Float, ry:Float, rw:Float, rh:Float, cx:Float, cy:Float, diameter:float)
+
+  'temporary variables to set edges for testing
+  Local testX:float = cx
+  Local testY:float = cy
+
+  'which edge is closest?
+  If (cx < rx)
+ 	 testX = rx 'left edge
+  Else If (cx > rx+rw)
+ 	 testX = rx+rw 'right edge
+  endif
+
+  If (cy < ry)
+  	testY = ry 'top edge
+  Else If (cy > ry+rh)
+  	testY = ry+rh 'bottom edge
+  endif
+
+  'get distance from closest edges
+  Local distance# = Sqrt( Pow(cx-testX,2)+Pow(cy-testY,2) )
+
+  'if the distance is less than the radius, collision!
+  If (distance <= diameter/2) Then Return True
+
+  Return False
+  
+End
+
+Function circleCircle:Bool(x:Float, y:Float, d:Float, x2:Float, y2:Float, d2:float)
+
+	If Sqrt( Pow(x-x2,2)+Pow(y-y2,2) ) <= (d/2)+(d2/2) Then Return True
+	Return False
+  
+End
+
+Function pointCircle:Bool(x:Float, y:Float, cx:Float, cy:Float, d:float)
+
+	If Sqrt( Pow(x-cx,2)+Pow(y-cy,2) ) <= d/2 Then Return True
+	Return False
+	
+End
+
+Function pointPoint:Bool(x1:Float, y1:Float, x2:Float, y2:float)
+  
+	If (x1=x2 And y1=y2) Then Return True
+	Return False
+  
+End
+
+Function pointRect:Bool(pointX:Float, pointY:Float, x:Float, y:Float, xW:Float, yW:float)
+
+	If (pointX >= x And pointX <= x + xW And pointY >= y And pointY <= y + yW) Then Return True
+	Return False
+	
+End
+
+Function lineRect:Bool(x1:Float, y1:Float, x2:Float, y2:Float, rx:Float, ry:Float, rw:Float, rh:float)
+  
+	'check if the line has hit any of the rectangle's sides
+	'uses the Line/Line function below
+	Local left:bool   = ColLineLine(x1,y1,x2,y2, rx,ry,rx, ry+rh)
+	Local right:bool  = ColLineLine(x1,y1,x2,y2, rx+rw,ry, rx+rw,ry+rh)
+	Local top:bool    = ColLineLine(x1,y1,x2,y2, rx,ry, rx+rw,ry)
+	Local bottom:bool = ColLineLine(x1,y1,x2,y2, rx,ry+rh, rx+rw,ry+rh)
+  
+	'if ANY of the above are true, the line has hit the rectangle
+	If left or right or top or bottom Then Return True
+	Return False
+	
+end
+
+Function lineLine:Bool(x1:Float, y1:Float, x2:Float, y2:Float, x3:Float, y3:Float, x4:Float, y4:float)
+
+	'calculate the direction of the lines
+	Local uA:float = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+	Local uB:float = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+
+	'if uA and uB are between 0-1, lines are colliding
+	if (uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1) then Return True
+	Return False
+  
+end
+
+Function lineCircle:Bool(x1:Float, y1:Float, x2:Float, y2:Float, cx:Float, cy:Float, r:float)
+
+	'is either end INSIDE the circle?
+	'if so, return true immediately
+	Local inside1:bool = ColPointCircle(x1,y1, cx,cy,r)
+	Local inside2:bool = ColPointCircle(x2,y2, cx,cy,r)
+	if (inside1 or inside2) return true
+  
+	'get length of the line
+	Local distX:float = x1 - x2
+	Local distY:float = y1 - y2
+	Local len:float = Sqrt((distX*distX)+(distY*distY))
+
+	'get dot product of the line and circle
+	Local dot:Float = (((cx-x1)*(x2-x1))+((cy-y1)*(y2-y1))) / Pow(len,2)
+
+	'find the closest point on the line
+	Local closestX:float = x1 + (dot * (x2-x1))
+	Local closestY:float = y1 + (dot * (y2-y1))
+  
+	'is this point actually on the line segment?
+	'if so keep going, but if not, return false
+	Local onSegment:bool = ColLinePoint(x1,y1,x2,y2, closestX,closestY)
+	If Not onSegment Then Return False
+
+	'get distance to closest point
+	distX = closestX - cx
+	distY = closestY - cy
+	Local distance:float = Sqrt( (distX*distX) + (distY*distY) )
+
+	If (distance <= r) Then Return True
+	return false
+
+end
+
+Function linePoint:bool(x1:float, y1:float, x2:float, y2:float, px:float, py:float)
+  
+	'get distance from the point to the two ends of the line
+	Local d1:float = Distance(px,py, x1,y1)
+	Local d2:float = Distance(px,py, x2,y2)
+  
+	'get the length of the line
+	Local lineLen:float = Distance(x1,y1, x2,y2)
+  
+	'since floats are so minutely accurate, add
+	'a little buffer zone that will give collision
+	Local buffer:float = 0.1 'higher # = less accurate
+  
+	'if the two distances are equal to the line's length, the
+	'point is on the line!
+	'note we use the buffer here to give a range, rather than one #
+	If (d1+d2 >= lineLen-buffer and d1+d2 <= lineLen+buffer) Then Return True
+	Return False
+  
+End
+
+Class PVector
+	Field x:Float,y:float
+End
+
+' POLYGON/CIRCLE
+Function polyCircle:Bool(vertices:PVector, cx:Float, cy:Float, r:float)
+  
+  ' go through each of the vertices, plus the next vertex in the list
+  Local n:Int = 0
+  For Local c:int=0 Until vertices.length
+    
+    ' get next vertex in list
+    ' if we've hit the end, wrap around to 0
+    n = c+1
+    If n = vertices.length Then n = 0
+    
+    ' get the PVectors at our current position
+    ' this makes our if statement a little cleaner
+    Local vc:PVector = vertices[c]' c for "current"
+    Local vn:PVector = vertices[n]' n for "next"
+    
+    ' check for collision between the circle and a line formed
+    ' between the two vertices
+    local collision:bool = lineCircle(vc.x,vc.y, vn.x,vn.y, cx,cy,r)
+    If collision Then Return True
+   
+  next
+    
+  ' the above algorithm only checks if the circle is touching
+  ' the edges of the polygon – in most cases this is enough, but
+  ' you can un-comment the following code to also test if the
+  ' center of the circle is inside the polygon
+  
+  ' boolean centerInside = polygonPoint(vertices, cx,cy);
+  ' if (centerInside) return true;
+  
+  ' otherwise, after all that, return false
+  Return False
+  
+end
+
+' POLYGON/LINE
+Function polyLine:Bool(vertices:PVector, x1:Float, y1:Float, x2:Float, y2:Float)
+
+  ' go through each of the vertices, plus the next vertex in the list
+  Local n:int = 0
+  For Local cc:Int=0 Until vertices.length
+
+    ' get next vertex in list
+    ' if we've hit the end, wrap around to 0
+    n = c+1
+    If n = vertices.length Then n = 0
+
+    ' get the PVectors at our current position
+    ' extract X/Y coordinates from each
+    Local x3:Float = vertices[c].x
+    Local y3:Float = vertices[c].y
+    local x4:float = vertices[n].x
+    local y4:float = vertices[n].y
+
+    ' do a Line/Line comparison
+    ' if true, return 'true' immediately and stop testing (faster)
+    Local hit:Bool = lineLine(x1, y1, x2, y2, x3, y3, x4, y4)
+    If hit Then Return True
+
+	Next
+
+  ' never got a hit
+  Return False
+
+end
+
+' POLYGON/POINT
+Function polyPoint:Bool(vertices:PVector[], px:Float, py:Float)
+
+  Local collision:Bool = False
+  
+  ' go through each of the vertices, plus the next vertex in the list
+  local n:int = 0
+  For Local c:Int=0 Until vertices.length
+    
+    ' get next vertex in list
+    ' if we've hit the end, wrap around to 0
+    n = c+1
+    if n = vertices.length then n = 0
+    
+    ' get the PVectors at our current position
+    ' this makes our if statement a little cleaner
+    Local vc:PVector = vertices[c]    ' c for "current"
+    Local vn:PVector = vertices[n]       ' n for "next"
+    
+    ' compare position, flip 'collision' variable back and forth
+    If ((vc.y >= py and vn.y < py) or (vc.y < py and vn.y >= py)) And (px < (vn.x-vc.x) * (py-vc.y) / (vn.y-vc.y) + vc.x) Then collision = Not collision
+    
+  Next
+
+  Return collision
+  
+end
+
+' POLYGON/POLYGON
+Function polyPoly:Bool(p1:PVector[], p2:PVerctor[])
+  
+  ' go through each of the vertices, plus the next vertex in the list
+  local n:int = 0
+  For Local c:Int=0 Until p1.length
+    
+    ' get next vertex in list
+    ' if we've hit the end, wrap around to 0
+    n = c+1
+    if n = p1.length then n = 0
+    
+    ' get the PVectors at our current position
+    ' this makes our if statement a little cleaner
+    Local vc:PVector = p1[c]    ' c for "current"
+    Local vn:PVector = p1[n]       ' n for "next"
+    
+    ' now we can use these two points (a line) to compare to the
+    ' other polygon's vertices using polyLine()
+    Local collision:Bool = polyLine(p2, vc.x,vc.y,vn.x,vn.y)
+    If collision Then Return True
+    
+    ' optional: check if the 2nd polygon is INSIDE the first
+    collision = polyPoint(p1, p2[0].x, p2[0].y)
+    If collision Then Return True
+
+  next
+  
+  Return False
+
+end
+
+' POLYGON/RECTANGLE
+Function polyRect:Bool(vertices:PVector, rx:Float, ry:Float, rw:Float, rh:Float)
+  
+  ' go through each of the vertices, plus the next vertex in the list
+  Local n:Int = 0
+  For Local c:Int=0 Until vertices.length
+    
+    ' get next vertex in list
+    ' if we've hit the end, wrap around to 0
+    n = c+1
+    if n = vertices.length then n = 0
+    
+    ' get the PVectors at our current position
+    ' this makes our if statement a little cleaner
+    PVector vc = vertices[c]    ' c for "current"
+    PVector vn = vertices[n]       ' n for "next"
+    
+    ' check against all four sides of the rectangle
+    Local collision:Bool = lineRect(vc.x,vc.y,vn.x,vn.y, rx,ry,rw,rh)
+    if collision then return true
+    
+    ' optional: test if the rectangle is INSIDE the polygon
+    ' note that this iterates all sides of the polygon again, so
+    ' only use this if you need to
+    Local inside:Bool = polygonPoint(vertices, rx,ry)
+    If inside Then Return True
+    
+  next
+  
+  Return False
+  
+end

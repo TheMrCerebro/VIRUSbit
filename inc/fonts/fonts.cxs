@@ -1,0 +1,147 @@
+'*********************************************************************
+'
+' Copyright (c) 2021-2022 TheMrCerebro
+'
+' ALIENbit - Zlib license.
+'
+' This software is provided 'as-is', without any express or
+' implied warranty. In no event will the authors be held
+' liable for any damages arising from the use of this software.
+'
+' Permission is granted to anyone to use this software for any purpose,
+' including commercial applications, and to alter it and redistribute
+' it freely, subject to the following restrictions:
+'
+' 1. The origin of this software must not be misrepresented;
+' you must not claim that you wrote the original software.
+' If you use this software in a product, an acknowledgment
+' in the product documentation would be appreciated but
+' is not required.
+'
+' 2. Altered source versions must be plainly marked as such,
+' and must not be misrepresented as being the original software.
+'
+' 3. This notice may not be removed or altered from any
+' source distribution.
+'
+'*********************************************************************
+
+#TEXT_FILES +="|*.fnt"
+
+Import mojo
+Import mojo.data
+Import inc.xml
+
+Global fnt:Font=New Font
+
+Function LoadFont:void(file:string)
+	fnt.Load(file)
+end
+
+Function Text(text:string, x:float, y:float, alignx:float=0.0, aligny:float=0.0)
+	fnt.Draw(text, x, y, alignx, aligny)
+end
+
+Class Font
+
+	Method Load:Void(name:string)
+
+		Local xml:=ParseXML(LoadString(name))
+
+		Local nodes:XMLNode = xml.GetChild("chars")
+		Local node:=nodes.GetChild("char")
+			
+		For Local i:int=0 until Int(nodes.GetAttribute("count"))
+			
+			Local id:int = Int(node.GetAttribute("id"))
+			Local x:int = Int(node.GetAttribute("x"))
+			Local y:int = Int(node.GetAttribute("y"))
+			Local w:int = Int(node.GetAttribute("width"))
+			Local h:int = Int(node.GetAttribute("height"))
+			Local xo:int = Int(node.GetAttribute("xoffset"))
+			Local yo:int = Int(node.GetAttribute("yoffset"))
+			Local xa:int = Int(node.GetAttribute("xadvance"))
+
+			chars[id] = New Char(x, y, w, h, xo, yo, xa)
+			
+			node = node.GetNextSibling("char")
+		next
+
+		img = LoadImage(FixDataPath(name).Replace(".fnt","_0.png"))
+				
+	End
+
+	Method Draw:Void(txt:string, x:float, y:float, alignx:float, aligny:float)
+
+		xOffset = 0
+
+		x -= TextWidth(txt)*alignx
+		y -= TextHeight(txt)*aligny
+	
+		For Local i:int=0 Until txt.Length()
+			Local ac:Char = chars[txt[i]]
+			If ac<>Null
+				ac.Draw(img, x+xOffset,y)
+				xOffset += ac.xAdvance
+			Endif
+		Next
+
+	End
+	
+	Method TextWidth:Int(txt:string)
+
+		Local width:int
+		
+		For Local i:int=0 Until txt.Length
+			Local ac:Char = chars[txt[i]]
+			If ac<>Null Then width += ac.xAdvance
+		Next
+		
+		Return width
+		
+	End
+	
+	Method TextHeight:Int(txt:string)
+	
+		Local h:int
+		
+		For Local i:int=0 Until txt.Length
+			Local ac:Char = chars[txt[i]]
+			If ac.h+ac.yOffset>h Then h = ac.h+ac.yOffset
+		Next
+
+		Return h
+		
+	End
+
+Private
+
+	Field img:Image
+	Field chars:Char[256]
+	Field xOffset:int, yOffset:int
+	
+End
+
+Class Char
+
+	Field asc:int
+	Field x:int, y:int
+	Field w:int, h:int
+	Field xOffset:int, yOffset:int
+	Field xAdvance:int
+
+	Method New(x:int, y:int, w:int, h:int, xoff:int=0, yoff:int=0, xadv:int=0)
+		Self.x = x
+		Self.y = y
+		Self.w = w
+		Self.h = h
+		Self.xOffset = xoff
+		Self.yOffset = yoff
+		Self.xAdvance = xadv
+	End
+	
+	Method Draw:void(fontImage:Image,linex:int,liney:int)
+		DrawImageRect(fontImage,linex+xOffset,liney+yOffset,x,y,w,h)
+	End
+	
+End

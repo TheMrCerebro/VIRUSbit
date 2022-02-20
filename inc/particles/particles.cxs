@@ -1,0 +1,123 @@
+'*********************************************************************
+'
+' Copyright (c) 2021-2022 TheMrCerebro
+'
+' ALIENbit - Zlib license.
+'
+' This software is provided 'as-is', without any express or
+' implied warranty. In no event will the authors be held
+' liable for any damages arising from the use of this software.
+'
+' Permission is granted to anyone to use this software for any purpose,
+' including commercial applications, and to alter it and redistribute
+' it freely, subject to the following restrictions:
+'
+' 1. The origin of this software must not be misrepresented;
+' you must not claim that you wrote the original software.
+' If you use this software in a product, an acknowledgment
+' in the product documentation would be appreciated but
+' is not required.
+'
+' 2. Altered source versions must be plainly marked as such,
+' and must not be misrepresented as being the original software.
+'
+' 3. This notice may not be removed or altered from any
+' source distribution.
+'
+'*********************************************************************
+
+Import mojo
+
+Class PARTICLE
+	Field x:float, y:float
+	Field vx:float, vy:float
+	Field gx:float, gy:float
+	Field r:int, g:int, b:int
+	Field a:float
+	Field life:float
+End
+
+Global parA:=New List<PARTICLE>
+
+Function AddEmitter:Void(x:float, y:float, gx:float, gy:float, r:int, g:int, b:int, fuel:int, life:float)
+		
+	For Local i:int=0 Until fuel
+		Local par:=New PARTICLE
+					        
+		par.x = x
+		par.y = y
+		par.life = life
+		
+		par.gx = gx
+		par.gy = gy
+
+		If fuel>1
+			par.vx = Rnd(-1,1)
+			par.vy = Rnd(-1,1)
+			par.a = Rnd(0.5,1.0)
+		else
+			par.vx = 0
+			par.vy = 0
+			par.a = 1
+		endif
+				
+		par.r = r
+		par.g = g
+		par.b = b
+			
+		parA.AddLast(par)
+	next
+
+End
+#rem
+Function AddEmitter:Void(x:float,y:float,vx:float,vy:float,gx:float,gy:float,r:int,g:int,b:int,fuel:int,life:float)
+		
+	Local par:=New PARTICLE
+					        
+	par.x = x
+	par.y = y
+	par.life = life
+		
+	par.gx = gx
+	par.gy = gy
+
+	par.vx = vx
+	par.vy = vy
+	par.a = Rnd(0.5,1.0)
+		
+	par.r = r
+	par.g = g
+	par.b = b
+			
+	parA.AddLast(par)
+
+End
+#end
+Function UpdateParticles:Void(ll:float=0,lr:float=64,lu:float=0,ld:float=64)
+	For Local par:=Eachin parA
+		If par.x<ll Or par.x>lr Or par.y<lu Or par.y>ld
+			parA.RemoveEach(par)
+		endif
+		If par.a>par.life
+			par.vx += par.gx
+			par.vy += par.gy
+			par.x += par.vx
+			par.y += par.vy
+			par.a -= par.life
+		Else
+			parA.RemoveEach(par)
+		endif
+	Next
+End
+
+Function DrawParticles:Void()
+	Translate(-0.5, -0.5)
+	For Local par:=Eachin parA
+		SetColor(par.r, par.g, par.b)
+		SetAlpha(par.a)
+		DrawRect(par.x, par.y, 1, 1)
+	Next
+	Translate(0.5, 0.5)
+	SetColor(255, 255, 255)
+	SetAlpha(1.0)
+end

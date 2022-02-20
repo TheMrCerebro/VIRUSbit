@@ -1,0 +1,100 @@
+Import mojo
+Import inc.fonts
+
+Global score%,hiscore%,txt$,ranking?
+Global hscA:=New HIGHSCORE
+
+Class SCORE
+	Field n$,v%
+End
+
+Class HIGHSCORE Extends List<SCORE>
+
+	Method New( data:SCORE[] )
+		Super.New( data )
+	End
+
+	Method Equals:bool( lhs:SCORE,rhs:SCORE )
+		Return lhs.v=rhs.v
+	End
+	
+	Method Compare( lhs:SCORE,rhs:SCORE )
+		Return lhs.v-rhs.v
+	end
+End
+
+function AddScore:void(v%,n$)
+
+	If hscA.Count()=5 Then hscA.RemoveLast()
+			
+	Local scr:=New SCORE
+	scr.v = v'Valor
+	scr.n = n'Nombre
+	hscA.AddLast(scr)
+			
+	'Sort
+	hscA.Sort(false)
+	
+	If v>hiscore Then hiscore=v
+
+End
+
+'Realiza una busqueda por si hay una puntuacion mayor
+Function CheckScore:void()
+
+	For Local hsc:=eachin hscA
+		If score>hsc.v
+			ranking = true
+			exit
+		endif
+	Next
+
+End
+
+Function EnterPlayer:Void(snd:Sound)
+
+	Repeat
+		Local char=GetChar()
+		If Not char Then Exit
+		If (char>=97 And char<=122)
+			txt += String.FromChar(char).ToUpper()
+			PlaySound(snd,1)
+		Endif
+		If txt.Length()>2
+			AddScore(score,txt)
+			ranking=False
+		Endif
+	Forever
+	
+End
+
+Function DrawScores:Void(tr%,tg%,tb%,sr%,sg%,sb%)
+	
+	SetAlpha(1.0)
+	If ranking
+		SetColor(tr,tg,tb)
+		Text("PUT YOUR NAME",32,16,0.5,0.5)
+
+		SetColor(255,255,255)
+		Text(txt,32,24,0.5,0.5)
+	Else
+		SetColor(tr,tg,tb)
+		Text("GAME OVER",32,7,0.5,0.5)
+		Text("X to MENU",32,56,0.5,0.5)
+		
+		Local i%
+		For Local hsc:=Eachin hscA
+			If score=hsc.v And txt=hsc.n
+				SetColor(sr,sg,sb)
+				SetAlpha(0.5+Cos(0.5 * Millisecs() Mod 360)*0.5)
+			Else
+				SetColor(255,255,255)
+				SetAlpha(1.0)
+			Endif
+			DrawText(hsc.n+":"+hsc.v,32,17+(i*7),0.5,0.5)
+			i+=1
+		Next
+	
+	Endif
+	
+end

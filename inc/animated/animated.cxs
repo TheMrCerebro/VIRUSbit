@@ -1,0 +1,81 @@
+'*********************************************************************
+'
+' Copyright (c) 2021-2022 TheMrCerebro
+'
+' ALIENbit - Zlib license.
+'
+' This software is provided 'as-is', without any express or
+' implied warranty. In no event will the authors be held
+' liable for any damages arising from the use of this software.
+'
+' Permission is granted to anyone to use this software for any purpose,
+' including commercial applications, and to alter it and redistribute
+' it freely, subject to the following restrictions:
+'
+' 1. The origin of this software must not be misrepresented;
+' you must not claim that you wrote the original software.
+' If you use this software in a product, an acknowledgment
+' in the product documentation would be appreciated but
+' is not required.
+'
+' 2. Altered source versions must be plainly marked as such,
+' and must not be misrepresented as being the original software.
+'
+' 3. This notice may not be removed or altered from any
+' source distribution.
+'
+'*********************************************************************
+
+Import mojo
+
+Global anmA:=New List<ANIMATION>
+
+Class ANIMATION
+	Field img:Image
+	Field x:float,y:float
+	Field name:string
+	Field show:bool
+	Field loop:bool
+	Field seq:float
+End
+
+Function AddAnimation:Void(img:Image,x:float,y:float,loop:bool=False,seq:float=0.0)
+	Local anm:=New ANIMATION
+	anm.x=x
+	anm.y=y
+	anm.loop=loop
+	anm.img=img
+	anm.show=True
+	anm.seq=seq
+	anmA.AddLast(anm)
+End
+
+Function AddAnimation:Void(img:Image,name:string,x:float,y:float,loop:bool=False,seq:float=0.0)
+	Local anm:=New ANIMATION
+	anm.x=x
+	anm.y=y
+	anm.loop=loop
+	anm.name=name
+	anm.img=img
+	anm.show=True
+	anm.seq=seq
+	anmA.AddLast(anm)
+End
+
+Function UpdateAnimations:Void()
+	For Local anm:=Eachin anmA
+		If anm.seq<anm.img.Frames()-1
+			anm.seq +=0.5
+		Else
+			If anm.loop Then anm.seq=0 Else anmA.RemoveEach(anm)
+		Endif
+	Next
+End
+
+Function DrawAnimations:Void()
+    SetColor(255,255,255)
+    SetAlpha(1.0)
+	For Local anm:=Eachin anmA
+		If anm.show Then DrawImage(anm.img,anm.x,anm.y,anm.seq)
+	Next
+end
