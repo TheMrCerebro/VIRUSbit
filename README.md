@@ -2,7 +2,7 @@
 Game developed by me using Cerberus X
 </br>
 
-<img src="https://user-images.githubusercontent.com/99989085/154798163-5f075f98-6b22-4a65-842c-fb96a2bcc096.png" />
+<img src="https://user-images.githubusercontent.com/99989085/154842485-f8e00628-a660-4089-9cb8-984eef3e87c0.png"/>
 </br>
 
 ## Introduction
